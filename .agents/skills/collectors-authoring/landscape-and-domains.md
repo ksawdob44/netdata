@@ -17,17 +17,20 @@ which data type it produces, or how the closest existing collectors in its domai
 | `systemd-units.plugin` | C | Linux | `src/collectors/systemd-units.plugin/` | systemd unit state |
 | `windows.plugin` | C | Windows | `src/collectors/windows.plugin/` | Windows performance counters |
 | `freebsd.plugin` / `macos.plugin` | C | platform-specific | `src/collectors/{freebsd,macos}.plugin/` | OS analogs of `proc.plugin` |
-| `statsd.plugin` | C | All | `src/collectors/statsd.plugin/` | StatsD ingestion + synthetic_charts |
+| `statsd.plugin` (internal) | C | All | `src/collectors/statsd.plugin/` | StatsD ingestion + synthetic_charts |
 | `log2journal` | C | Linux | `src/collectors/log2journal/` | Parse application logs into the systemd journal |
 | Niche C plugins | C | various | `src/collectors/<name>.plugin/` | freeipmi, nfacct, tc, xenstat, debugfs, diskspace, slabinfo, idlejitter, timex, cups, ioping, perf |
 | `go.d.plugin` | Go (no CGO) | All | `src/go/plugin/go.d/` | Application integrations |
 | `ibm.d.plugin` | Go + CGO | Linux, IBM i | `src/go/plugin/ibm.d/modules/` | IBM workloads (DB2, IBM i / AS-400, IBM MQ, WebSphere) |
+| `scripts.d.plugin` | Go (no CGO) | All | `src/go/plugin/scripts.d/` | Nagios-compatible check scripts (`nagios` module) |
+| `statsd.plugin` (Go) | Go (no CGO) | All | `src/go/plugin/statsd/` | **Experimental**, opt-in (`ENABLE_PLUGIN_STATSD`): StatsD UDP/TCP ingestion (`listen` module) |
 | `netflow-plugin` | Rust | Linux | `src/crates/netflow-plugin/` | NetFlow v5/v9, IPFIX, sFlow |
 | `otel-plugin` | Rust | Linux | `src/crates/otel-plugin/` | OpenTelemetry metrics + logs ingestion (logs queryable via the `otel-logs` Function) |
 | `charts.d.plugin` / `python.d.plugin` | Bash / Python | All | `src/collectors/{charts,python}.d.plugin/` | **Legacy** — do not add new modules |
 
 Path conventions: internal C plugins → `src/collectors/<name>.plugin/`; Go orchestrators →
-`src/go/plugin/{go.d,ibm.d}/`; Rust plugins → `src/crates/<name>/`.
+`src/go/plugin/{go.d,ibm.d,scripts.d,statsd}/` with entry points in `src/go/cmd/` (`godplugin`, `ibmdplugin`,
+`scriptsdplugin`, `statsdplugin`); Rust plugins → `src/crates/<name>/`.
 
 ## ibm.d, Rust SDK, internal C, PLUGINSD
 
@@ -36,7 +39,8 @@ Path conventions: internal C plugins → `src/collectors/<name>.plugin/`; Go orc
   drivers; CGO outside the IBM ecosystem is a design discussion.
 - **Rust SDK** at `src/crates/netdata-plugin/` — modules `bridge/`, `protocol/`, `rt/`, `charts-derive/`, `schema/`,
   `types/`, `error/`. Documentation lives in `lib.rs` doc-comments — there is no README. New Rust crates go into the
-  `src/crates/Cargo.toml` workspace. Reference impl: `src/crates/netflow-plugin/`.
+  `src/crates/Cargo.toml` workspace. Reference impl: `src/crates/netflow-plugin/`. When to call
+  `PluginRuntime::run()` at startup: its doc-comment and `src/plugins.d/README.md#operation`.
 - **Internal C plugins** — mirror an adjacent collector under `src/collectors/<name>.plugin/`; reuse `src/libnetdata/`.
   `libnetdata.h` includes most of libnetdata so individual headers are usually unnecessary. Allocators with the `z`
   suffix (`mallocz`, `callocz`, `strdupz`, `freez`) handle failures via `fatal()`; `freez(NULL)` is safe. JSON parsing:
